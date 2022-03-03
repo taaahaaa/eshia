@@ -1,5 +1,5 @@
-from urllib import response
 from urllib.parse import unquote
+import random
 import scrapy
 import csv
 
@@ -11,11 +11,14 @@ class EshiaSpider(scrapy.Spider):
     custom_settings = {
             # Set delay in each request to 2 second to prevent blocking from firewall
             "DOWNLOAD_DELAY" : 2,
+            "LOG_STDOUT" : True,
+            "LOG_FILE" : './tmp/scrapy_output.txt',
     }
 
     # Create data list in initialize step to store information crawled
     def __init__(self):
         self.data = []
+        self.content = {}
 
     # Save information in destruction to csv file
     def __del__(self):
@@ -48,29 +51,13 @@ class EshiaSpider(scrapy.Spider):
         # If subcategories exist parse the content in the next function
         if sub_cats_links:
             for sub_cat_link in sub_cats_links:
-                yield scrapy.Request(url=sub_cat_link, callback=self.ParseData)
+                yield scrapy.Request(url=sub_cat_link, callback=self.ParseBooks)
         # If subcategories does not exist get contents of page
         elif not sub_cats_links:
             url = response.url
-            category = url.split("/")[3]
-            if len(url.split("/")) == 5:
-                sub_category = url.split("/")[4]
-            elif len(url.split("/")) == 4:
-                sub_category = url.split("/")[3]
+            self.ParseBooks(response)
             
-            content_table = response.css("#BooksList > tbody > tr").getall()
-            for i in range(0, len(content_table)):
-                content = {}
-                content["Category"] = unquote(category).replace(",", "")
-                content["Subcategory"] = unquote(sub_category).replace(",", "")
-                content["Book name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::text').get().replace(",", "")
-                content["Book url"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::attr(href)').get().replace(",", "")
-                content["Author name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookAuthor-sub > a::text').get().replace(",", "")
-                content["Author url"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookAuthor-sub > a::attr(href)').get().replace(",", "")
-                
-                self.data.append(content)
-            
-    def ParseData(self, response):
+    def ParseBooks(self, response):
         url = response.url
         category = url.split("/")[3]
         if len(url.split("/")) == 5:
@@ -80,12 +67,28 @@ class EshiaSpider(scrapy.Spider):
         
         content_table = response.css("#BooksList > tbody > tr").getall()
         for i in range(0, len(content_table)):
-            content = {}
-            content["Category"] = unquote(category).replace(",", "")
-            content["Subcategory"] = unquote(sub_category).replace(",", "")
-            content["Book name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::text').get().replace(",", "")
-            content["Book url"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::attr(href)').get().replace(",", "")
-            content["Author name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookAuthor-sub > a::text').get().replace(",", "")
-            content["Author url"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookAuthor-sub > a::attr(href)').get().replace(",", "")
+            self.content = {}
+            self.content["Category"] = unquote(category).replace(",", "")
+            self.content["Subcategory"] = unquote(sub_category).replace(",", "")
+            self.content["Book name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::text').get().replace(",", "")
+            self.content["Book url"] = book_url = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::attr(href)').get().replace(",", "")
+            self.content["Author name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookAuthor-sub > a::text').get().replace(",", "")
+            self.content["Author url"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookAuthor-sub > a::attr(href)').get().replace(",", "")
             
-            self.data.append(content)
+            yield scrapy.Request(url=book_url, callback=self.ParseBook)
+            
+            self.data.append(self.content)
+
+    def ParseBook(self, response):
+        if len(response.url.split("/")) == 4:
+            response.url = response.url + "/1/1"
+        current_page = response.url.split("/")[-1]
+        last_page = response.css("#contents_cover > table > tr:nth-child(2) > td > form:nth-child(1) > table > tr > td:nth-child(5) > a::attr(href)").get().split("/")[-1]
+        random_pages = random.sample(range(int(current_page), int(last_page)), 5)
+        for page in random_pages:
+            page_url = '/'.join(response.url.split("/")) + str(page)
+            yield scrapy.Request(url=page_url, callback=self.ParsePage)
+
+    def ParsePage(self, response):
+        page_content = response.css("#contents_cover > table > tr:nth-child(4)").get().replace(",", "")
+        self.content["rand_pages"].append = page_content
