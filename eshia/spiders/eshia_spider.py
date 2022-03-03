@@ -50,16 +50,33 @@ class EshiaSpider(scrapy.Spider):
             for sub_cat_link in sub_cats_links:
                 yield scrapy.Request(url=sub_cat_link, callback=self.ParseData)
         # If subcategories does not exist get contents of page
-        else:
-            yield scrapy.Request(url=response, callback=self.ParseData)
+        elif not sub_cats_links:
+            url = response.url
+            category = url.split("/")[3]
+            if len(url.split("/")) == 5:
+                sub_category = url.split("/")[4]
+            elif len(url.split("/")) == 4:
+                sub_category = url.split("/")[3]
+            
+            content_table = response.css("#BooksList > tbody > tr").getall()
+            for i in range(0, len(content_table)):
+                content = {}
+                content["Category"] = unquote(category).replace(",", "")
+                content["Subcategory"] = unquote(sub_category).replace(",", "")
+                content["Book name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::text').get().replace(",", "")
+                content["Book url"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::attr(href)').get().replace(",", "")
+                content["Author name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookAuthor-sub > a::text').get().replace(",", "")
+                content["Author url"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookAuthor-sub > a::attr(href)').get().replace(",", "")
+                
+                self.data.append(content)
             
     def ParseData(self, response):
         url = response.url
         category = url.split("/")[3]
         if len(url.split("/")) == 5:
             sub_category = url.split("/")[4]
-        else:
-            sub_category = "None"
+        elif len(url.split("/")) == 4:
+            sub_category = url.split("/")[3]
         
         content_table = response.css("#BooksList > tbody > tr").getall()
         for i in range(0, len(content_table)):
