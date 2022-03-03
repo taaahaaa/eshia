@@ -1,4 +1,5 @@
 from urllib import response
+from urllib.parse import unquote
 import scrapy
 import csv
 
@@ -63,8 +64,8 @@ class EshiaSpider(scrapy.Spider):
         content_table = response.css("#BooksList > tbody > tr").getall()
         for i in range(0, len(content_table)):
             content = {}
-            content["Category"] = category
-            content["Subcategory"] = sub_category
+            content["Category"] = unquote(category)
+            content["Subcategory"] = unquote(sub_category)
             content["Book name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::text').get()
             content["Book url"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::attr(href)').get()
             content["Author name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookAuthor-sub > a::text').get()
