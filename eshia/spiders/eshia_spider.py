@@ -10,7 +10,7 @@ class EshiaSpider(scrapy.Spider):
     # Set some custome settings to bypass any existing firewalls
     custom_settings = {
             # Set delay in each request to 2 second to prevent blocking from firewall
-            "DOWNLOAD_DELAY" : 2,
+            "DOWNLOAD_DELAY" : 0,
             "LOG_STDOUT" : True,
             "LOG_FILE" : './tmp/scrapy_output.txt',
     }
@@ -42,6 +42,7 @@ class EshiaSpider(scrapy.Spider):
     def ParseCats(self, response):
         # Use some tricks to ommit last two items => list[1:-2]
         cats_links = response.css("div#navigationBar > div:nth-child(1) > table > tr > td > ul > li > span > a::attr(href)").getall()[1:-2]
+        # for testing #cats_links = response.css("div#navigationBar > div:nth-child(1) > table > tr > td > ul > li > span > a::attr(href)").getall()[7:8]
         for cat_link in cats_links:
             yield scrapy.Request(url=cat_link, callback=self.ParseSubCats)
     
@@ -74,21 +75,24 @@ class EshiaSpider(scrapy.Spider):
             self.content["Book url"] = book_url = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::attr(href)').get().replace(",", "")
             self.content["Author name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookAuthor-sub > a::text').get().replace(",", "")
             self.content["Author url"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookAuthor-sub > a::attr(href)').get().replace(",", "")
-            
+
             yield scrapy.Request(url=book_url, callback=self.ParseBook)
-            
-            self.data.append(self.content)
 
     def ParseBook(self, response):
+        self.content["Rand pages"] = ""
+        url = response.url
         if len(response.url.split("/")) == 4:
-            response.url = response.url + "/1/1"
-        current_page = response.url.split("/")[-1]
+            url = response.url + "/1/1"
+        elif len(response.url.split("/")) == 5:
+            url = response.url + "/1"
+        current_page = url.split("/")[-1]
         last_page = response.css("#contents_cover > table > tr:nth-child(2) > td > form:nth-child(1) > table > tr > td:nth-child(5) > a::attr(href)").get().split("/")[-1]
         random_pages = random.sample(range(int(current_page), int(last_page)), 5)
         for page in random_pages:
-            page_url = '/'.join(response.url.split("/")) + str(page)
+            page_url = '/'.join(url.split("/"))[0:-1] + str(page)
             yield scrapy.Request(url=page_url, callback=self.ParsePage)
+        self.data.append(self.content)
 
     def ParsePage(self, response):
-        page_content = response.css("#contents_cover > table > tr:nth-child(4)").get().replace(",", "")
-        self.content["rand_pages"].append = page_content
+        page_content = response.css("#contents_cover > table > tr:nth-child(4)").get().replace(",", " ").replace("\n", " ").replace("<br>", " ").replace("\r", " ")
+        self.content["Rand pages"] = self.content["Rand pages"] + " " + page_content
