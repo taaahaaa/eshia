@@ -41,8 +41,9 @@ class EshiaSpider(scrapy.Spider):
     # Parsing categories
     def ParseCats(self, response):
         # Use some tricks to ommit last two items => list[1:-2]
-        cats_links = response.css("div#navigationBar > div:nth-child(1) > table > tr > td > ul > li > span > a::attr(href)").getall()[1:-2]
-        # for testing #cats_links = response.css("div#navigationBar > div:nth-child(1) > table > tr > td > ul > li > span > a::attr(href)").getall()[7:8]
+        #cats_links = response.css("div#navigationBar > div:nth-child(1) > table > tr > td > ul > li > span > a::attr(href)").getall()[1:-2]
+        # for testing #
+        cats_links = response.css("div#navigationBar > div:nth-child(1) > table > tr > td > ul > li > span > a::attr(href)").getall()[7:8]
         for cat_link in cats_links:
             yield scrapy.Request(url=cat_link, callback=self.ParseSubCats)
     
@@ -68,7 +69,6 @@ class EshiaSpider(scrapy.Spider):
         
         content_table = response.css("#BooksList > tbody > tr").getall()
         for i in range(0, len(content_table)):
-            self.content = {}
             self.content["Category"] = unquote(category).replace(",", "")
             self.content["Subcategory"] = unquote(sub_category).replace(",", "")
             self.content["Book name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::text').get().replace(",", "")
