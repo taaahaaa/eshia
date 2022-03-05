@@ -41,7 +41,7 @@ class EshiaSpider(scrapy.Spider):
     # Parsing categories
     def ParseCats(self, response):
         # Use some tricks to ommit last two items => list[1:-2]
-        #cats_links = response.css("div#navigationBar > div:nth-child(1) > table > tr > td > ul > li > span > a::attr(href)").getall()[1:-2]
+        # cats_links = response.css("div#navigationBar > div:nth-child(1) > table > tr > td > ul > li > span > a::attr(href)").getall()[1:-2]
         # for testing #
         cats_links = response.css("div#navigationBar > div:nth-child(1) > table > tr > td > ul > li > span > a::attr(href)").getall()[7:8]
         for cat_link in cats_links:
@@ -69,17 +69,19 @@ class EshiaSpider(scrapy.Spider):
         
         content_table = response.css("#BooksList > tbody > tr").getall()
         for i in range(0, len(content_table)):
-            self.content["Category"] = unquote(category).replace(",", "")
-            self.content["Subcategory"] = unquote(sub_category).replace(",", "")
-            self.content["Book name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::text').get().replace(",", "")
-            self.content["Book url"] = book_url = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::attr(href)').get().replace(",", "")
-            self.content["Author name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookAuthor-sub > a::text').get().replace(",", "")
-            self.content["Author url"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookAuthor-sub > a::attr(href)').get().replace(",", "")
-
+            # self.content = {}
+            # self.content["Category"] = unquote(category).replace(",", "")
+            # self.content["Subcategory"] = unquote(sub_category).replace(",", "")
+            # self.content["Book id"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::attr(href)').get().replace(",", "").split("/")[-1]
+            # self.content["Book name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::text').get().replace(",", "")
+            # self.content["Book url"] = book_url = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::attr(href)').get().replace(",", "")
+            # self.content["Author name"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookAuthor-sub > a::text').get().replace(",", "")
+            # self.content["Author url"] = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookAuthor-sub > a::attr(href)').get().replace(",", "")
+            # self.data.append(self.content)
+            book_url = response.css(f'#BooksList > tbody > tr:nth-child({i+1}) > td.BookName-sub > a::attr(href)').get().replace(",", "")
             yield scrapy.Request(url=book_url, callback=self.ParseBook)
 
     def ParseBook(self, response):
-        self.content["Rand pages"] = ""
         url = response.url
         if len(response.url.split("/")) == 4:
             url = response.url + "/1/1"
@@ -91,8 +93,9 @@ class EshiaSpider(scrapy.Spider):
         for page in random_pages:
             page_url = '/'.join(url.split("/"))[0:-1] + str(page)
             yield scrapy.Request(url=page_url, callback=self.ParsePage)
-        self.data.append(self.content)
 
     def ParsePage(self, response):
-        page_content = response.css("#contents_cover > table > tr:nth-child(4)").get().replace(",", " ").replace("\n", " ").replace("<br>", " ").replace("\r", " ")
-        self.content["Rand pages"] = self.content["Rand pages"] + " " + page_content
+        self.content = {}
+        self.content["Book id"] = response.url.split("/")[-3]
+        self.content["Page content"] =  response.css("#contents_cover > table > tr:nth-child(4)").get().replace(",", " ").replace("\n", " ").replace("<br>", " ").replace("\r", " ")
+        self.data.append(self.content)
