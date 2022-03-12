@@ -10,7 +10,7 @@ class EshiaSpider(scrapy.Spider):
     # Set some custome settings to bypass any existing firewalls
     custom_settings = {
             # Set delay in each request to 2 second to prevent blocking from firewall
-            "DOWNLOAD_DELAY" : 0,
+            "DOWNLOAD_DELAY" : 1,
             "LOG_STDOUT" : True,
             "LOG_FILE" : './tmp/scrapy_output.txt',
     }
@@ -43,7 +43,7 @@ class EshiaSpider(scrapy.Spider):
         # Use some tricks to ommit last two items => list[1:-2]
         # cats_links = response.css("div#navigationBar > div:nth-child(1) > table > tr > td > ul > li > span > a::attr(href)").getall()[1:-2]
         # for testing #
-        cats_links = response.css("div#navigationBar > div:nth-child(1) > table > tr > td > ul > li > span > a::attr(href)").getall()[7:8]
+        cats_links = response.css("div#navigationBar > div:nth-child(1) > table > tr > td > ul > li > span > a::attr(href)").getall()[6:7]
         for cat_link in cats_links:
             yield scrapy.Request(url=cat_link, callback=self.ParseSubCats)
     
